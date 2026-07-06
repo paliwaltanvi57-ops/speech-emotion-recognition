@@ -5,3 +5,19 @@ __pycache__/
 .env
 # Ignore dataset
 data/raw/
+
+# Virtual Environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Uploaded audio files
+uploads/
+
+# Chunked audio
+chunks/
+
+# Results
+results/
