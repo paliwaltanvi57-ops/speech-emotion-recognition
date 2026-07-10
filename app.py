@@ -30,9 +30,27 @@ def upload():
     file.save(filepath)
     
     num_chunks = split_audio(filepath)
+
+    # Read chunk files
+    
+    chunk_folder = "chunks"
+    chunk_files = os.listdir(chunk_folder)
+    chunk_files.sort()
+
+    for chunk in chunk_files:
+        chunk_path = os.path.join(chunk_folder, chunk)
+        print(chunk_path)
+    
     return f"""<h2>Upload Successful ✅</h2>
     <p>File: {file.filename}</p>
     <p>Total Chunks Created: {num_chunks}</p>"""
+
+
+     # Predict emotions
+
+     # Save results
+
+     # Return response
 
 if __name__ == "__main__":
     app.run(debug=True)
