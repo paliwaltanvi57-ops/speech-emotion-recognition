@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request
 import os
 from utils.chunk_audio import split_audio
+from utils.predict_emotion import predict_emotion
+
 
 app = Flask(__name__)
 
@@ -36,10 +38,24 @@ def upload():
     chunk_folder = "chunks"
     chunk_files = os.listdir(chunk_folder)
     chunk_files.sort()
+    results = []
 
     for chunk in chunk_files:
         chunk_path = os.path.join(chunk_folder, chunk)
-        print(chunk_path)
+
+        emotion, confidence = predict_emotion(chunk_path)
+
+        results.append({
+            "chunk": chunk,
+            "emotion": emotion,
+            "confidence": confidence})
+
+        print(f"Chunk: {chunk}")
+        print(f"Path: {chunk_path}")
+        print(f"Emotion: {emotion}")
+        print(f"Confidence: {confidence}")
+        print("-------------------------")
+    print(results)
     
     return f"""<h2>Upload Successful ✅</h2>
     <p>File: {file.filename}</p>
