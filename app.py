@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 import os
 from utils.chunk_audio import split_audio
 from utils.predict_emotion import predict_emotion
+import json
 
 
 app = Flask(__name__)
@@ -56,6 +57,9 @@ def upload():
         print(f"Confidence: {confidence}")
         print("-------------------------")
     print(results)
+    result_file = os.path.join("results", "emotion_analysis.json")
+    with open(result_file, "w") as json_file:
+        json.dump(results, json_file, indent=4)
     
     return f"""<h2>Upload Successful ✅</h2>
     <p>File: {file.filename}</p>
