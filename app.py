@@ -65,7 +65,6 @@ def upload():
     <p>File: {file.filename}</p>
     <p>Total Chunks Created: {num_chunks}</p>"""
 
-
      # Predict emotions
 
      # Save results
