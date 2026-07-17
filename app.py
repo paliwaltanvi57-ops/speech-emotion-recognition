@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request
 import os
+import json
 from utils.chunk_audio import split_audio
 from utils.predict_emotion import predict_emotion
-import json
+
 
 
 app = Flask(__name__)
@@ -43,33 +44,37 @@ def upload():
 
     for chunk in chunk_files:
         chunk_path = os.path.join(chunk_folder, chunk)
-
         emotion, confidence = predict_emotion(chunk_path)
-
+        print(f"Chunk: {chunk}")
+        print(f"Emotion: {emotion}")
+        print(f"Confidence: {confidence:.2f}")
+        print("-----------------------")
         results.append({
             "chunk": chunk,
             "emotion": emotion,
-            "confidence": confidence})
+            "confidence": round(confidence, 2)
+        })
 
-        print(f"Chunk: {chunk}")
-        print(f"Path: {chunk_path}")
-        print(f"Emotion: {emotion}")
-        print(f"Confidence: {confidence}")
-        print("-------------------------")
+
     print(results)
+
+    os.makedirs("results", exist_ok=True)
+
     result_file = os.path.join("results", "emotion_analysis.json")
     with open(result_file, "w") as json_file:
         json.dump(results, json_file, indent=4)
     
-    return f"""<h2>Upload Successful ✅</h2>
-    <p>File: {file.filename}</p>
-    <p>Total Chunks Created: {num_chunks}</p>"""
+    overall_emotion = max(
+    results,
+    key=lambda x: x["confidence"]
+)["emotion"]
+    return f"""
+    <h2>Upload Successful ✅</h2>
+    <p><b>File:</b> {file.filename}</p>
+    <p><b>Total Chunks:</b> {num_chunks}</p>
+    <p><b>Overall Emotion:</b> {overall_emotion}</p>
+    """
 
-     # Predict emotions
-
-     # Save results
-
-     # Return response
 
 if __name__ == "__main__":
     app.run(debug=True)
