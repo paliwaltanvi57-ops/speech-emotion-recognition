@@ -1,5 +1,14 @@
 import os
+
 from pydub import AudioSegment
+
+import pydub.utils
+
+FFMPEG_PATH = r"C:\ffmpeg-8.1.2-essentials_build\ffmpeg-8.1.2-essentials_build\bin"
+
+AudioSegment.converter = os.path.join(FFMPEG_PATH, "ffmpeg.exe")
+
+pydub.utils.get_prober_name = lambda: os.path.join(FFMPEG_PATH, "ffprobe.exe")
 
 def split_audio(filepath) :
 
@@ -16,7 +25,10 @@ def split_audio(filepath) :
      os.remove(file_path)
 
     # 2. Load uploaded audio
-    audio = AudioSegment.from_wav(filepath)
+    print("Uploaded File:", filepath)
+    print("File Exists:", os.path.exists(filepath))
+    
+    audio = AudioSegment.from_file(filepath, format="wav")
 
 
 
@@ -36,8 +48,12 @@ def split_audio(filepath) :
        chunk.export(file_path, format="wav")
     return chunk_count
 
-    # 4. Save each chunk as chunk_0.wav, chunk_1.wav, ...
+   
 
-    # 5. Return number of chunks 
+    
+
+    
+    os.makedirs("chunks", exist_ok=True)
+    os.makedirs("uploads", exist_ok=True)
 
     

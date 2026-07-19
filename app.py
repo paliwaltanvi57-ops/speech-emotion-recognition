@@ -44,7 +44,8 @@ def upload():
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
     
     file.save(filepath)
-    file.save(filepath)
+    print(os.path.exists(filepath))
+    
     try:
         num_chunks = split_audio(filepath)
         # All the remaining processing code
