@@ -11,12 +11,16 @@ import tensorflow as tf
 from keras.models import Sequential
 
 from keras.layers import (
+    Input,
     Conv2D,
+    BatchNormalization,
     MaxPooling2D,
     GlobalAveragePooling2D,
     Dense,
     Dropout
 )
+
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 
 # Load processed dataset
@@ -120,8 +124,12 @@ print(label_encoder.classes_)
 # on the training set only (never on val/test, that would leak info),
 # then apply the same transform everywhere, including at prediction time.
 
-feat_mean = X_train_raw.mean(axis=0, keepdims=True)
-feat_std = X_train_raw.std(axis=0, keepdims=True) + 1e-8
+# One mean/std per MFCC coefficient (40 of them), averaged over all clips
+# AND all time frames. Shape (1, 40, 1). Do NOT compute it per time
+# position: late frames are mostly zero padding, so their std is tiny and
+# the few real values there would be blown up to huge numbers.
+feat_mean = X_train_raw.mean(axis=(0, 2), keepdims=True)
+feat_std = X_train_raw.std(axis=(0, 2), keepdims=True) + 1e-8
 
 X_train = (X_train_raw - feat_mean) / feat_std
 X_val = (X_val_raw - feat_mean) / feat_std
@@ -133,6 +141,33 @@ np.save("models/feature_std.npy", feat_std)
 print("\nSaved feature_mean.npy / feature_std.npy — predict_emotion.py "
       "MUST apply this same normalization before predicting, or "
       "predictions will be wrong.")
+
+
+# ---------------------------------------------------------------
+# Augmentation (TRAINING data only)
+# ---------------------------------------------------------------
+# With only 15 training voices the model memorises them: training accuracy
+# climbed to 60% while validation collapsed. We make "new" training
+# examples by randomly blanking a band of MFCC coefficients, blanking a
+# stretch of time, and adding a little noise (SpecAugment-style). Val and
+# test sets are never augmented.
+rng = np.random.default_rng(42)
+
+def augment(X):
+    X = X.copy()
+    for i in range(len(X)):
+        f = rng.integers(0, 7)                  # blank up to 6 coefficients
+        f0 = rng.integers(0, 40 - f + 1)
+        X[i, f0:f0 + f, :] = 0.0
+        t = rng.integers(0, 31)                 # blank up to 30 frames
+        t0 = rng.integers(0, 300 - t + 1)
+        X[i, :, t0:t0 + t] = 0.0
+    X += rng.normal(0, 0.05, X.shape)           # small noise
+    return X
+
+X_train = np.concatenate([X_train, augment(X_train), augment(X_train)])
+y_train = np.concatenate([y_train, y_train, y_train])
+print("Training set after augmentation:", X_train.shape)
 
 
 # Add channel dimension for CNN
@@ -154,27 +189,29 @@ print("Training Shape:", X_train.shape)
 
 model = Sequential([
 
-    Conv2D(
-        filters=32,
-        kernel_size=(3, 3),
-        activation="relu",
-        input_shape=(40, 300, 1)
-    ),
+    Input(shape=(40, 300, 1)),
 
+    # Block 1
+    Conv2D(32, (3, 3), padding="same", activation="relu"),
+    BatchNormalization(),
     MaxPooling2D(pool_size=(2, 2)),
+    Dropout(0.25),
 
-    Conv2D(
-        filters=64,
-        kernel_size=(3, 3),
-        activation="relu"
-    ),
-
+    # Block 2
+    Conv2D(64, (3, 3), padding="same", activation="relu"),
+    BatchNormalization(),
     MaxPooling2D(pool_size=(2, 2)),
+    Dropout(0.25),
+
+    # Block 3 (new: the first version was too small to learn much)
+    Conv2D(128, (3, 3), padding="same", activation="relu"),
+    BatchNormalization(),
+    MaxPooling2D(pool_size=(2, 2)),
+    Dropout(0.25),
 
     GlobalAveragePooling2D(),
 
     Dense(128, activation="relu"),
-
     Dropout(0.5),
 
     Dense(8, activation="softmax")
@@ -190,12 +227,23 @@ model.compile(
 
 # validation_data is now the held-out VAL set, not the test set —
 # the test set stays untouched until the final evaluate() call below.
+# Up to 80 epochs, but stop automatically when validation loss stops
+# improving, and keep the BEST version of the model (not the last one).
+early_stop = EarlyStopping(
+    monitor="val_loss", patience=12, restore_best_weights=True
+)
+# Lower the learning rate when progress stalls
+reduce_lr = ReduceLROnPlateau(
+    monitor="val_loss", factor=0.5, patience=5, min_lr=1e-5
+)
+
 history = model.fit(
     X_train,
     y_train,
     validation_data=(X_val, y_val),
-    epochs=15,
-    batch_size=32
+    epochs=80,
+    batch_size=32,
+    callbacks=[early_stop, reduce_lr]
 )
 
 test_loss, test_accuracy = model.evaluate(X_test, y_test)
