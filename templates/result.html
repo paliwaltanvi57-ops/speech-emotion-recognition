@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Emotion Analysis Result</title>
 
     <link rel="stylesheet"
@@ -8,6 +10,16 @@
 </head>
 
 <body>
+
+{# Emoji for each emotion, defined once and reused below #}
+{% set faces = {
+    "Happy": "😊", "Sad": "😢", "Angry": "😡", "Fear": "😨",
+    "Disgust": "🤢", "Surprised": "😲", "Neutral": "😐", "Calm": "😌"
+} %}
+{% set dots = {
+    "Happy": "🟡", "Sad": "🔵", "Angry": "🔴", "Fear": "🟣",
+    "Disgust": "🟤", "Surprised": "🟠", "Neutral": "⚪", "Calm": "🟢"
+} %}
 
 <div class="container">
 
@@ -18,49 +30,27 @@
         <br>
 
         <div class="emotion-badge">
-        {{ overall_emotion }}
-        </div>
-
-        <div class="emotion-badge">
-            {% if overall_emotion == "Happy" %}
-            😊 Happy
-
-            {% elif overall_emotion == "Sad" %}
-            😢 Sad
-
-            {% elif overall_emotion == "Angry" %}
-            😡 Angry
-
-            {% elif overall_emotion == "Fear" %}
-            😨 Fear
-
-            {% elif overall_emotion == "Disgust" %}
-            🤢 Disgust
-
-            {% elif overall_emotion == "Surprised" %}
-            😲 Surprised
-
-            {% elif overall_emotion == "Neutral" %}
-            😐 Neutral
-
-            {% else %}
-            😌 Calm
-
-            {% endif %}
-
+            {{ faces.get(overall_emotion, "") }} {{ overall_emotion }}
         </div>
 
         <br>
 
         <h2>Average Confidence</h2>
 
+        {# The model's confidence is a fraction (0.38), so multiply by 100 #}
+        {% set avg_pct = (average_confidence * 100) | round(1) %}
+
         <div class="progress">
-            <div class="progress-fill"style="width: {{ average_confidence }}%;">
-                 {{ average_confidence }}%
+            <div class="progress-fill" style="width: {{ avg_pct }}%;">
+                {{ avg_pct }}%
             </div>
         </div>
 
-        <br><br>
+        <p style="font-size: 0.85em; opacity: 0.8;">
+            This is the model's own score, not a guarantee that the answer is correct.
+        </p>
+
+        <br>
 
         <table>
 
@@ -71,41 +61,11 @@
             </tr>
 
             {% for result in results %}
-
             <tr>
                 <td>{{ result.chunk }}</td>
-                <td>
-                    {% if result.emotion=="Happy" %}
-                    🟡 Happy
-                    
-                    {% elif result.emotion=="Sad" %}
-                    🔵 Sad
-
-                    {% elif result.emotion=="Angry" %}
-                    🔴 Angry
-
-                    {% elif result.emotion=="Fear" %}
-                    🟣 Fear
-
-                    {% elif result.emotion=="Disgust" %}
-                    🟤 Disgust
-
-                    {% elif result.emotion=="Surprised" %}
-                    🟠 Surprised
-
-                    {% elif result.emotion=="Neutral" %}
-                    ⚪ Neutral
-
-                    {% else %}
-                    🟢 Calm
-
-                    {% endif %}
-
-                </td>
-
-                <td>{{ result.confidence }}</td>
+                <td>{{ dots.get(result.emotion, "") }} {{ result.emotion }}</td>
+                <td>{{ (result.confidence * 100) | round(1) }}%</td>
             </tr>
-
             {% endfor %}
 
         </table>
@@ -114,11 +74,12 @@
 
         <a href="/">
             <button>Analyze Another Audio</button>
-            <br><br>
-            <a href="/download">
-            <button>
-            Download JSON Report
-            </button>
+        </a>
+
+        <br><br>
+
+        <a href="/download">
+            <button>Download JSON Report</button>
         </a>
 
     </div>
